@@ -62,7 +62,7 @@ export default function Login() {
             onChange={(e) =>
               setForm((s) => ({ ...s, password: e.target.value }))
             }
-            placeholder="Masukkan password (isi nama cabang)"
+            placeholder="Masukkan password "
             autoComplete="current-password"
             required
           />
