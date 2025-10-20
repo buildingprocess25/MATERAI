@@ -97,8 +97,9 @@ export default function ViewResults() {
         Gunakan filter di bawah untuk mencari dokumen.
       </p>
 
-      <div className="row" style={{ marginBottom: 12 }}>
-        <div className="col">
+      {/* FILTERS */}
+      <div className="filtersGrid" style={{ marginBottom: 12 }}>
+        <div className="field">
           <label>Pilih Cabang</label>
           <select
             value={filters.cabang}
@@ -115,7 +116,7 @@ export default function ViewResults() {
           </select>
         </div>
 
-        <div className="col">
+        <div className="field">
           <label>Pilih Nomor Ulok</label>
           <select
             value={filters.ulok}
@@ -133,7 +134,7 @@ export default function ViewResults() {
           </select>
         </div>
 
-        <div className="col">
+        <div className="field">
           <label>Pilih Lingkup Kerja</label>
           <select
             value={filters.lingkup}
@@ -152,8 +153,9 @@ export default function ViewResults() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button onClick={applyFilters} disabled={loading}>
+      {/* ACTIONS */}
+      <div className="actions">
+        <button onClick={applyFilters} disabled={loading} className="primary">
           {loading ? (
             <>
               <span className="btnSpinner" /> Memuat…
@@ -167,12 +169,9 @@ export default function ViewResults() {
         </button>
       </div>
 
-      {/* TABEL hanya muncul setelah user klik "Terapkan Filter" */}
+      {/* HASIL */}
       {searched && (
-        <div
-          className="card"
-          style={{ overflowX: "auto", position: "relative" }}
-        >
+        <div className="card tableWrapper" style={{ position: "relative" }}>
           {/* Overlay loading */}
           {loading && (
             <div className="loadingOverlay">
@@ -182,44 +181,109 @@ export default function ViewResults() {
           )}
 
           {!loading && (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Waktu</th>
-                  <th>Cabang</th>
-                  <th>Nomor Ulok</th>
-                  <th>Lingkup</th>
-                  <th>File</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.length === 0 ? (
+            <>
+              {/* Tabel untuk layar lebar */}
+              <table className="table desktopTable">
+                <thead>
                   <tr>
-                    <td colSpan="6">Tidak ada data.</td>
+                    <th>Waktu</th>
+                    <th>Cabang</th>
+                    <th>Nomor Ulok</th>
+                    <th>Lingkup</th>
+                    <th>File</th>
+                    <th>Aksi</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan="6">Tidak ada data.</td>
+                    </tr>
+                  ) : (
+                    items.map((it) => (
+                      <tr key={it.id}>
+                        <td className="nowrap">
+                          {new Date(
+                            it.createdAt || Date.now()
+                          ).toLocaleString()}
+                        </td>
+                        <td>{it.cabang}</td>
+                        <td className="break">{it.ulok}</td>
+                        <td>{it.lingkup}</td>
+                        <td className="break">{it.file?.name || "-"}</td>
+                        <td>
+                          {it.driveViewUrl ? (
+                            <>
+                              <a
+                                href={it.driveViewUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Preview
+                              </a>
+                              {" | "}
+                              <a
+                                href={it.driveDownloadUrl || it.driveViewUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Download
+                              </a>
+                            </>
+                          ) : (
+                            <span>-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              {/* Kartu responsif untuk layar kecil */}
+              <div className="mobileCards">
+                {items.length === 0 ? (
+                  <div className="empty">Tidak ada data.</div>
                 ) : (
                   items.map((it) => (
-                    <tr key={it.id}>
-                      <td>
-                        {new Date(it.createdAt || Date.now()).toLocaleString()}
-                      </td>
-                      <td>{it.cabang}</td>
-                      <td>{it.ulok}</td>
-                      <td>{it.lingkup}</td>
-                      <td>{it.file?.name || "-"}</td>
-                      <td>
+                    <div key={it.id} className="mCard">
+                      <div className="mRow">
+                        <span className="mLabel">Waktu</span>
+                        <span className="mValue">
+                          {new Date(
+                            it.createdAt || Date.now()
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="mRow">
+                        <span className="mLabel">Cabang</span>
+                        <span className="mValue">{it.cabang}</span>
+                      </div>
+                      <div className="mRow">
+                        <span className="mLabel">Nomor Ulok</span>
+                        <span className="mValue">{it.ulok}</span>
+                      </div>
+                      <div className="mRow">
+                        <span className="mLabel">Lingkup</span>
+                        <span className="mValue">{it.lingkup}</span>
+                      </div>
+                      <div className="mRow">
+                        <span className="mLabel">File</span>
+                        <span className="mValue">{it.file?.name || "-"}</span>
+                      </div>
+                      <div className="mActions">
                         {it.driveViewUrl ? (
                           <>
                             <a
+                              className="link"
                               href={it.driveViewUrl}
                               target="_blank"
                               rel="noreferrer"
                             >
                               Preview
                             </a>
-                            {" | "}
                             <a
+                              className="link"
                               href={it.driveDownloadUrl || it.driveViewUrl}
                               target="_blank"
                               rel="noreferrer"
@@ -230,33 +294,104 @@ export default function ViewResults() {
                         ) : (
                           <span>-</span>
                         )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))
                 )}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {/* CSS spinner & overlay */}
+      {/* CSS spinner & overlay + RESPONSIVE */}
       <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+        /* grid filter: 3 kolom di desktop, 1 kolom di mobile */
+        .filtersGrid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
         }
+        .field label {
+          display: block;
+          font-size: .9rem;
+          margin-bottom: 6px;
+          color: #555;
+        }
+        .field select {
+          width: 100%;
+        }
+
+        .actions {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+        .actions .primary, .actions .ghost {
+          min-width: 160px;
+        }
+
+        .tableWrapper { overflow-x: auto; }
+
+        .table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .table th, .table td {
+          padding: 10px 12px;
+          border-bottom: 1px solid #eee;
+          vertical-align: top;
+          text-align: left;
+        }
+        .table thead th {
+          position: sticky;
+          top: 0;
+          background: #fff;
+          z-index: 1;
+        }
+        .nowrap { white-space: nowrap; }
+        .break { word-break: break-word; }
+
+        /* Kartu mobile: default disembunyikan di desktop */
+        .mobileCards { display: none; }
+        .mCard {
+          border: 1px solid #eee;
+          border-radius: 12px;
+          padding: 12px;
+          margin-bottom: 10px;
+          background: #fff;
+        }
+        .mRow {
+          display: grid;
+          grid-template-columns: 120px 1fr;
+          gap: 8px;
+          padding: 6px 0;
+          border-bottom: 1px dashed #f0f0f0;
+        }
+        .mRow:last-child { border-bottom: 0; }
+        .mLabel { color: #666; font-size: .9rem; }
+        .mValue { font-weight: 500; }
+        .mActions {
+          display: flex;
+          gap: 12px;
+          padding-top: 8px;
+        }
+        .link { color: #e53935; text-decoration: none; }
+        .link:hover { text-decoration: underline; }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
         .spinner {
-          width: 40px;
-          height: 40px;
+          width: 40px; height: 40px;
           border: 4px solid #eee;
-          border-top-color: #e53935; /* merah selaras theme */
+          border-top-color: #e53935;
           border-radius: 50%;
           animation: spin .9s linear infinite;
         }
         .btnSpinner {
           display:inline-block;
-          width: 14px;
-          height: 14px;
+          width: 14px; height: 14px;
           border: 2px solid #fff;
           border-right-color: transparent;
           border-radius: 50%;
@@ -267,12 +402,28 @@ export default function ViewResults() {
         .loadingOverlay {
           position: absolute;
           inset: 0;
-          background: rgba(255,255,255,.85);
+          background: rgba(255,255,255,.9);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-direction: column;
-          z-index: 1;
+          z-index: 2;
+        }
+
+        /* ====== BREAKPOINTS ====== */
+        @media (max-width: 1024px) {
+          .filtersGrid { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 640px) {
+          /* Filter & tombol bertumpuk penuh */
+          .filtersGrid { grid-template-columns: 1fr; }
+          .actions { flex-direction: column; }
+          .actions .primary, .actions .ghost { width: 100%; }
+
+          /* Ganti tabel → kartu */
+          .desktopTable { display: none; }
+          .mobileCards { display: block; }
         }
       `}</style>
     </div>
