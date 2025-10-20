@@ -1,0 +1,13 @@
+/* Tambahan kecil untuk App */
+.page-title {
+  margin: 0 0 12px;
+}
+.page-subtitle {
+  color: #64748b;
+  margin: 0 0 20px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
