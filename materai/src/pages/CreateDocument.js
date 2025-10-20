@@ -114,8 +114,17 @@ export default function CreateDocument() {
   };
 
   return (
-    <div className="card">
-      {/* ... header & notice tetap ... */}
+    <div className="card" aria-busy={submitting}>
+      {/* Overlay loading penuh layar */}
+      {submitting && (
+        <div className="savingOverlay" role="alert" aria-live="assertive">
+          <div className="loader" />
+          <div style={{ marginTop: 12, fontWeight: 600 }}>
+            Mengunggah & menyimpan…
+          </div>
+        </div>
+      )}
+
       <div
         className="p-3 rounded border"
         style={{ background: "#fff8e1", marginBottom: "1.5rem" }}
@@ -132,7 +141,10 @@ export default function CreateDocument() {
         , lalu unggah hasilnya melalui form di bawah.
       </div>
 
-      <form onSubmit={onSubmit}>
+      <form
+        onSubmit={onSubmit}
+        style={{ pointerEvents: submitting ? "none" : "auto" }}
+      >
         <div className="row">
           <div className="col">
             <label>Cabang</label>
@@ -142,6 +154,7 @@ export default function CreateDocument() {
                 setForm((s) => ({ ...s, cabang: e.target.value }))
               }
               required
+              disabled={submitting}
             >
               <option value="">Pilih cabang…</option>
               {cabangOps.map((c) => (
@@ -157,7 +170,7 @@ export default function CreateDocument() {
             <select
               value={form.ulok}
               onChange={(e) => setForm((s) => ({ ...s, ulok: e.target.value }))}
-              disabled={!form.cabang || ulokOps.length === 0}
+              disabled={!form.cabang || ulokOps.length === 0 || submitting}
               required
             >
               <option value="">Pilih nomor ulok…</option>
@@ -176,7 +189,7 @@ export default function CreateDocument() {
               onChange={(e) =>
                 setForm((s) => ({ ...s, lingkup: e.target.value }))
               }
-              disabled={!form.ulok || lingkupOps.length === 0}
+              disabled={!form.ulok || lingkupOps.length === 0 || submitting}
               required
             >
               <option value="">Pilih lingkup…</option>
@@ -189,16 +202,9 @@ export default function CreateDocument() {
           </div>
         </div>
 
-        {/* upload & submit tetap */}
-        {/* Upload file yang sudah ditempel e-meterai */}
+        {/* Upload file */}
         <div className="mt-5 mb-3">
-          <label
-            style={{
-              fontWeight: 600,
-              display: "block",
-              marginBottom: "8px",
-            }}
-          >
+          <label style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
             Upload File (PDF / Gambar)
           </label>
 
@@ -207,6 +213,7 @@ export default function CreateDocument() {
             accept=".pdf,image/*"
             onChange={onFileChange}
             required
+            disabled={submitting}
             style={{
               display: "block",
               width: "100%",
@@ -216,13 +223,7 @@ export default function CreateDocument() {
             }}
           />
 
-          <small
-            style={{
-              display: "block",
-              marginTop: "6px",
-              color: "#666",
-            }}
-          >
+          <small style={{ display: "block", marginTop: 6, color: "#666" }}>
             Unggah dokumen yang sudah termeterai.
           </small>
         </div>
@@ -248,7 +249,7 @@ export default function CreateDocument() {
         {/* Tombol submit */}
         <div
           style={{
-            marginTop: "10px", // jarak lebih rapat
+            marginTop: 10,
             display: "flex",
             justifyContent: "flex-start",
           }}
@@ -262,14 +263,53 @@ export default function CreateDocument() {
               border: "none",
               borderRadius: "8px",
               padding: "10px 24px",
-              fontWeight: "600",
-              cursor: "pointer",
+              fontWeight: 600,
+              cursor: submitting ? "default" : "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
             }}
           >
+            {submitting && <span className="btnSpinner" aria-hidden="true" />}
             {submitting ? "Menyimpan..." : "Simpan"}
           </button>
         </div>
       </form>
+
+      {/* CSS: spinner + overlay */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loader {
+          width: 56px; height: 56px;
+          border: 5px solid #eaeaea;
+          border-top-color: #d32f2f;
+          border-radius: 50%;
+          animation: spin .9s linear infinite;
+        }
+
+        .btnSpinner {
+          width: 16px; height: 16px;
+          border: 2px solid rgba(255,255,255,.8);
+          border-right-color: transparent;
+          border-radius: 50%;
+          animation: spin .8s linear infinite;
+        }
+
+        .savingOverlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(255,255,255,.85);
+          backdrop-filter: blur(2px);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          text-align: center;
+          color: #333;
+        }
+      `}</style>
     </div>
   );
 }
