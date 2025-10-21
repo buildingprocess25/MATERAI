@@ -190,7 +190,6 @@ export default function ViewResults() {
                     <th>Cabang</th>
                     <th>Nomor Ulok</th>
                     <th>Lingkup</th>
-                    <th>File</th>
                     <th>Aksi</th>
                   </tr>
                 </thead>
@@ -210,7 +209,6 @@ export default function ViewResults() {
                         <td>{it.cabang}</td>
                         <td className="break">{it.ulok}</td>
                         <td>{it.lingkup}</td>
-                        <td className="break">{it.file?.name || "-"}</td>
                         <td>
                           {it.driveViewUrl ? (
                             <>
@@ -268,8 +266,6 @@ export default function ViewResults() {
                         <span className="mValue">{it.lingkup}</span>
                       </div>
                       <div className="mRow">
-                        <span className="mLabel">File</span>
-                        <span className="mValue">{it.file?.name || "-"}</span>
                       </div>
                       <div className="mActions">
                         {it.driveViewUrl ? (
