@@ -7,9 +7,23 @@ import {
   listDocuments,
 } from "../services/googleSheets";
 
+// helper baca cabang dari session
+const SESSION_KEY = "MATERAI_USER";
+function getSessionCabang() {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || "{}")?.cabang || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function ViewResults() {
-  // filter berantai
-  const [filters, setFilters] = useState({ cabang: "", ulok: "", lingkup: "" });
+  // kunci ke cabang login
+  const [filters, setFilters] = useState({
+    cabang: getSessionCabang(),
+    ulok: "",
+    lingkup: "",
+  });
 
   // state ui
   const [loading, setLoading] = useState(false);
@@ -22,73 +36,76 @@ export default function ViewResults() {
   const [optLingkup, setOptLingkup] = useState([]);
 
   // load CABANG saat mount (tanpa auto-search)
-  useEffect(() => {
-    getCabangOptions()
-      .then(setOptCabang)
-      .catch((e) => alert(e.message || "Gagal memuat cabang"));
-  }, []);
+useEffect(() => {
+  getCabangOptions()
+    .then((ops) => {
+      setOptCabang(ops);
+      // set cabang dari server/session (ops berisi [cabangUser])
+      setFilters((s) => ({ ...s, cabang: ops[0] || "" }));
+    })
+    .catch((e) => alert(e.message || "Cabang belum diinput untuk akun ini."));
+}, []);
+
 
   // saat CABANG dipilih → reset ULOK & LINGKUP dan load ULOK
-  useEffect(() => {
-    if (!filters.cabang) {
-      setOptUlok([]);
-      setOptLingkup([]);
-      setFilters((s) => ({ ...s, ulok: "", lingkup: "" }));
-      return;
-    }
-    getUlokOptions(filters.cabang)
-      .then(setOptUlok)
-      .catch((e) => alert(e.message || "Gagal memuat nomor ulok"));
-    setFilters((s) => ({ ...s, ulok: "", lingkup: "" }));
-    setOptLingkup([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.cabang]);
-
-  // saat ULOK dipilih → reset LINGKUP dan load LINGKUP
-  useEffect(() => {
-    if (!filters.cabang || !filters.ulok) {
-      setOptLingkup([]);
-      setFilters((s) => ({ ...s, lingkup: "" }));
-      return;
-    }
-    getLingkupOptions(filters.cabang, filters.ulok)
-      .then(setOptLingkup)
-      .catch((e) => alert(e.message || "Gagal memuat lingkup"));
-    setFilters((s) => ({ ...s, lingkup: "" }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.ulok]);
-
-  async function applyFilters() {
-    setSearched(true);
-
-    // jika semua kosong → jangan tampilkan data apa pun
-    if (!filters.cabang && !filters.ulok && !filters.lingkup) {
-      setItems([]);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await listDocuments({
-        cabang: filters.cabang || undefined,
-        ulok: filters.ulok || undefined,
-        lingkup: filters.lingkup || undefined,
-      });
-      setItems(res);
-    } catch (e) {
-      alert(e.message || "Gagal memuat data.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function resetAll() {
-    setFilters({ cabang: "", ulok: "", lingkup: "" });
+useEffect(() => {
+  if (!filters.cabang) {
     setOptUlok([]);
     setOptLingkup([]);
-    setItems([]);
-    setSearched(false); // sembunyikan tabel lagi
+    setFilters((s) => ({ ...s, ulok: "", lingkup: "" }));
+    return;
   }
+  // cabang tidak perlu dikirim; sudah dikunci di service
+  getUlokOptions()
+    .then(setOptUlok)
+    .catch((e) => alert(e.message || "Gagal memuat nomor ulok"));
+  setFilters((s) => ({ ...s, ulok: "", lingkup: "" }));
+  setOptLingkup([]);
+}, [filters.cabang]);
+
+
+  // saat ULOK dipilih → reset LINGKUP dan load LINGKUP
+useEffect(() => {
+  if (!filters.cabang || !filters.ulok) {
+    setOptLingkup([]);
+    setFilters((s) => ({ ...s, lingkup: "" }));
+    return;
+  }
+  // cukup kirim ulok; cabang otomatis
+  getLingkupOptions(filters.ulok)
+    .then(setOptLingkup)
+    .catch((e) => alert(e.message || "Gagal memuat lingkup"));
+  setFilters((s) => ({ ...s, lingkup: "" }));
+}, [filters.ulok]);
+
+
+async function applyFilters() {
+  setSearched(true);
+  setLoading(true);
+  try {
+    // service sudah memaksa cabang dari session; biarkan ulok/lingkup opsional
+    const res = await listDocuments({
+      ulok: filters.ulok || undefined,
+      lingkup: filters.lingkup || undefined,
+    });
+    setItems(res);
+  } catch (e) {
+    alert(e.message || "Gagal memuat data.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+
+function resetAll() {
+  const cabang = getSessionCabang();
+  setFilters({ cabang, ulok: "", lingkup: "" });
+  setOptUlok([]);
+  setOptLingkup([]);
+  setItems([]);
+  setSearched(false);
+}
+
 
   return (
     <div className="card">
@@ -103,11 +120,10 @@ export default function ViewResults() {
           <label>Pilih Cabang</label>
           <select
             value={filters.cabang}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, cabang: e.target.value }))
-            }
+            onChange={() => {}}
+            disabled
+            title="Cabang dikunci sesuai akun login"
           >
-            <option value="">Semua</option>
             {optCabang.map((v) => (
               <option key={v} value={v}>
                 {v}
@@ -265,8 +281,7 @@ export default function ViewResults() {
                         <span className="mLabel">Lingkup</span>
                         <span className="mValue">{it.lingkup}</span>
                       </div>
-                      <div className="mRow">
-                      </div>
+                      <div className="mRow"></div>
                       <div className="mActions">
                         {it.driveViewUrl ? (
                           <>

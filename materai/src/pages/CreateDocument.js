@@ -7,6 +7,18 @@ import {
   getLingkupOptions,
 } from "../services/googleSheets";
 
+// Tambahkan helper untuk ambil cabang user dari localStorage
+const SESSION_KEY = "MATERAI_USER";
+function getSessionCabang() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    return String(obj?.cabang || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 const initial = { cabang: "", ulok: "", lingkup: "" };
 
 export default function CreateDocument() {
@@ -22,17 +34,19 @@ export default function CreateDocument() {
   const [lingkupOps, setLingkupOps] = useState([]);
 
   // load cabang saat halaman dibuka
-  useEffect(() => {
-    (async () => {
-      try {
-        const ops = await getCabangOptions();
-        setCabangOps(ops);
-      } catch (e) {
-        console.error(e);
-        setError("Gagal memuat opsi cabang.");
-      }
-    })();
-  }, []);
+useEffect(() => {
+  (async () => {
+    try {
+      const ops = await getCabangOptions(); // sudah otomatis sesuai cabang login
+      setCabangOps(ops);
+      setForm((s) => ({ ...s, cabang: ops[0] || "" })); // isi otomatis
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "Cabang belum diinput untuk akun ini.");
+    }
+  })();
+}, []);
+
 
   // ketika cabang berubah → reset ulok & lingkup, lalu ambil opsi ulok
   useEffect(() => {
@@ -42,17 +56,18 @@ export default function CreateDocument() {
       setForm((s) => ({ ...s, ulok: "", lingkup: "" }));
       return;
     }
-    (async () => {
-      try {
-        const ops = await getUlokOptions(form.cabang);
-        setUlokOps(ops);
-        setLingkupOps([]);
-        setForm((s) => ({ ...s, ulok: "", lingkup: "" }));
-      } catch (e) {
-        console.error(e);
-        setError("Gagal memuat nomor ulok.");
-      }
-    })();
+(async () => {
+  try {
+    const ops = await getUlokOptions(); // tanpa argumen cabang
+    setUlokOps(ops);
+    setLingkupOps([]);
+    setForm((s) => ({ ...s, ulok: "", lingkup: "" }));
+  } catch (e) {
+    console.error(e);
+    setError(e.message || "Gagal memuat nomor ulok.");
+  }
+})();
+
   }, [form.cabang]);
 
   // ketika ulok berubah → reset lingkup, lalu ambil opsi lingkup
@@ -62,16 +77,17 @@ export default function CreateDocument() {
       setForm((s) => ({ ...s, lingkup: "" }));
       return;
     }
-    (async () => {
-      try {
-        const ops = await getLingkupOptions(form.cabang, form.ulok);
-        setLingkupOps(ops);
-        setForm((s) => ({ ...s, lingkup: "" }));
-      } catch (e) {
-        console.error(e);
-        setError("Gagal memuat lingkup kerja.");
-      }
-    })();
+(async () => {
+  try {
+    const ops = await getLingkupOptions(form.ulok); // cukup kirim ulok
+    setLingkupOps(ops);
+    setForm((s) => ({ ...s, lingkup: "" }));
+  } catch (e) {
+    console.error(e);
+    setError(e.message || "Gagal memuat lingkup kerja.");
+  }
+})();
+
   }, [form.ulok]);
 
   const onFileChange = (e) => {
@@ -150,13 +166,10 @@ export default function CreateDocument() {
             <label>Cabang</label>
             <select
               value={form.cabang}
-              onChange={(e) =>
-                setForm((s) => ({ ...s, cabang: e.target.value }))
-              }
-              required
-              disabled={submitting}
+              onChange={() => {}} // dikunci
+              disabled
+              title="Cabang dikunci sesuai akun login"
             >
-              <option value="">Pilih cabang…</option>
               {cabangOps.map((c) => (
                 <option key={c} value={c}>
                   {c}

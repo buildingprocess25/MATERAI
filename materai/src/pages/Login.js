@@ -15,12 +15,20 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await login(form.email, form.password); // password = cabang
+    const res = await login(form.email, form.password);
     setLoading(false);
-    if (res.ok) {
+
+    if (res.ok && res.data?.cabang) {
+      // Pastikan sesi sudah disimpan oleh AuthContext
+      const sess = JSON.parse(localStorage.getItem("MATERAI_USER") || "null");
+      if (!sess?.cabang) {
+        setError("Login berhasil tapi sesi tidak tersimpan. Coba ulangi.");
+        return;
+      }
+
       navigate("/dashboard", { replace: true });
     } else {
-      setError(res.message || "Gagal login.");
+      setError(res.message || "Email atau password salah.");
     }
   };
 

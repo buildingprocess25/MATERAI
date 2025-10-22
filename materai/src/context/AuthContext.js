@@ -9,38 +9,75 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem("materai_auth");
-    if (raw) setUser(JSON.parse(raw));
+    // Baca dari key baru: MATERAI_USER (fallback materai_auth)
+    const raw =
+      localStorage.getItem("MATERAI_USER") ||
+      localStorage.getItem("materai_auth");
+    if (raw) {
+      try {
+        setUser(JSON.parse(raw));
+      } catch {}
+    }
   }, []);
 
-  // email = username; password = cabang
-const login = async (email, cabangAsPassword) => {
-  try {
-    const url = new URL(SHEETS_WEB_APP_URL);
-    url.searchParams.set("action", "login");
-    url.searchParams.set("email", email);
-    url.searchParams.set("cabang", cabangAsPassword);
+  // AFTER (ganti fungsi login saja)
+  const login = async (email, cabangAsPassword) => {
+    try {
+      const url = new URL(SHEETS_WEB_APP_URL);
+      url.searchParams.set("action", "login");
+      url.searchParams.set("email", email);
+      url.searchParams.set("cabang", cabangAsPassword);
+      url.searchParams.set("ts", Date.now().toString()); // cache buster
 
-    const res = await fetch(url.toString(), { method: "GET" });
-    const json = await res.json();
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        mode: "cors",
+        cache: "no-store",
+        redirect: "follow",
+        referrerPolicy: "no-referrer",
+      });
 
-    if (json?.ok) {
-      const profile = {
-        email,
-        cabang: cabangAsPassword,
-        loggedInAt: Date.now(),
+      // Jika bukan 200, tampilkan body mentah biar kelihatan errornya
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, message: `HTTP ${res.status}: ${text}` };
+      }
+
+      let json;
+      try {
+        json = await res.json();
+      } catch {
+        const text = await res.text();
+        return { ok: false, message: `Respon bukan JSON: ${text}` };
+      }
+
+      // Bersihkan sesi lama
+      localStorage.removeItem("MATERAI_USER");
+      localStorage.removeItem("materai_auth");
+
+      if (json?.ok && json?.data?.email && json?.data?.cabang) {
+        const profile = {
+          email: String(json.data.email),
+          cabang: String(json.data.cabang).toUpperCase(),
+          loggedInAt: Date.now(),
+        };
+        localStorage.setItem("MATERAI_USER", JSON.stringify(profile));
+        localStorage.setItem("materai_auth", JSON.stringify(profile)); // kompat lama
+        setUser(profile);
+        return { ok: true, data: profile };
+      }
+
+      return {
+        ok: false,
+        message: json?.message || "Email atau password salah",
       };
-      localStorage.setItem("materai_auth", JSON.stringify(profile));
-      setUser(profile);
-      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err.message || "Gagal login" };
     }
-    return { ok: false, message: json?.message || "Email atau password salah" };
-  } catch (err) {
-    return { ok: false, message: err.message || "Gagal login" };
-  }
-};
+  };
 
   const logout = () => {
+    localStorage.removeItem("MATERAI_USER");
     localStorage.removeItem("materai_auth");
     setUser(null);
   };
