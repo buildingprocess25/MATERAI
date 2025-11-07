@@ -9,7 +9,7 @@ export default function Dashboard() {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Masukan Dokumen TerMaterai</h3>
           <p>
-            Buat dokumen menjadi TerMaterai dan simpan kedalam database
+            Masukan dokumen TerMaterai dan simpan kedalam database
           </p>
           <Link to="/buat-dokumen">
             <button>Buka Form</button>
