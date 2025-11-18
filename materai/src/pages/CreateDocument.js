@@ -90,18 +90,18 @@ export default function CreateDocument() {
 const onFileChange = (e) => {
   const selected = Array.from(e.target.files || []);
 
-  // Filter hanya file PDF
-  const pdfFiles = selected.filter(
+  // ambil hanya file PDF
+  const pdfOnly = selected.filter(
     (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
   );
 
-  if (pdfFiles.length !== selected.length) {
+  // kalau ada yang bukan PDF, kasih warning
+  if (pdfOnly.length !== selected.length) {
     alert("Hanya file PDF yang diperbolehkan.");
   }
 
-  setFiles(pdfFiles);
+  setFiles(pdfOnly);
 };
-
 
 const onSubmit = async (e) => {
   e.preventDefault();
@@ -116,31 +116,42 @@ const onSubmit = async (e) => {
   try {
     setSubmitting(true);
 
-    // Ubah semua file ke base64
-    const filesData = await Promise.all(
-      files.map(async (f) => {
-        const conv = await fileToBase64(f);
-        return {
-          name: conv.name,
-          mimeType: conv.mimeType,
-          size: conv.size,
-          base64: conv.base64,
-          extension: conv.extension,
-        };
-      })
-    );
-
-    const payload = {
+    const basePayload = {
       cabang: form.cabang.trim(),
       ulok: form.ulok.trim(),
       lingkup: form.lingkup.trim(),
-      files: filesData, // ← kirim sebagai array
     };
 
-    const saved = await createDocument(payload);
-    setResult(saved);
+    const allResults = [];
+
+    // kirim ke backend satu per satu, tetap pakai "file:"
+    for (const rawFile of files) {
+      const f = await fileToBase64(rawFile);
+
+      // cek sederhana sebelum dikirim
+      if (!f.base64 || !f.mimeType || !f.name) {
+        throw new Error("file tidak lengkap (base64/mimeType/name)");
+      }
+
+      const payload = {
+        ...basePayload,
+        file: {
+          name: f.name,
+          mimeType: f.mimeType,
+          size: f.size,
+          base64: f.base64,
+          extension: f.extension,
+        },
+      };
+
+      const saved = await createDocument(payload);
+      allResults.push(saved);
+    }
+
+    // simpan hasil terakhir atau seluruh array (sesuai kebutuhanmu)
+    setResult(allResults);
     setForm(initial);
-    setFiles([]); // reset
+    setFiles([]);
     setSubmitting(false);
   } catch (err) {
     setSubmitting(false);
