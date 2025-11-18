@@ -23,7 +23,7 @@ const initial = { cabang: "", ulok: "", lingkup: "" };
 
 export default function CreateDocument() {
   const [form, setForm] = useState(initial);
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]); // ← simpan banyak file
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -34,19 +34,18 @@ export default function CreateDocument() {
   const [lingkupOps, setLingkupOps] = useState([]);
 
   // load cabang saat halaman dibuka
-useEffect(() => {
-  (async () => {
-    try {
-      const ops = await getCabangOptions(); // sudah otomatis sesuai cabang login
-      setCabangOps(ops);
-      setForm((s) => ({ ...s, cabang: ops[0] || "" })); // isi otomatis
-    } catch (e) {
-      console.error(e);
-      setError(e.message || "Cabang belum diinput untuk akun ini.");
-    }
-  })();
-}, []);
-
+  useEffect(() => {
+    (async () => {
+      try {
+        const ops = await getCabangOptions(); // sudah otomatis sesuai cabang login
+        setCabangOps(ops);
+        setForm((s) => ({ ...s, cabang: ops[0] || "" })); // isi otomatis
+      } catch (e) {
+        console.error(e);
+        setError(e.message || "Cabang belum diinput untuk akun ini.");
+      }
+    })();
+  }, []);
 
   // ketika cabang berubah → reset ulok & lingkup, lalu ambil opsi ulok
   useEffect(() => {
@@ -56,18 +55,17 @@ useEffect(() => {
       setForm((s) => ({ ...s, ulok: "", lingkup: "" }));
       return;
     }
-(async () => {
-  try {
-    const ops = await getUlokOptions(); // tanpa argumen cabang
-    setUlokOps(ops);
-    setLingkupOps([]);
-    setForm((s) => ({ ...s, ulok: "", lingkup: "" }));
-  } catch (e) {
-    console.error(e);
-    setError(e.message || "Gagal memuat nomor ulok.");
-  }
-})();
-
+    (async () => {
+      try {
+        const ops = await getUlokOptions(); // tanpa argumen cabang
+        setUlokOps(ops);
+        setLingkupOps([]);
+        setForm((s) => ({ ...s, ulok: "", lingkup: "" }));
+      } catch (e) {
+        console.error(e);
+        setError(e.message || "Gagal memuat nomor ulok.");
+      }
+    })();
   }, [form.cabang]);
 
   // ketika ulok berubah → reset lingkup, lalu ambil opsi lingkup
@@ -77,57 +75,79 @@ useEffect(() => {
       setForm((s) => ({ ...s, lingkup: "" }));
       return;
     }
-(async () => {
-  try {
-    const ops = await getLingkupOptions(form.ulok); // cukup kirim ulok
-    setLingkupOps(ops);
-    setForm((s) => ({ ...s, lingkup: "" }));
-  } catch (e) {
-    console.error(e);
-    setError(e.message || "Gagal memuat lingkup kerja.");
-  }
-})();
-
+    (async () => {
+      try {
+        const ops = await getLingkupOptions(form.ulok); // cukup kirim ulok
+        setLingkupOps(ops);
+        setForm((s) => ({ ...s, lingkup: "" }));
+      } catch (e) {
+        console.error(e);
+        setError(e.message || "Gagal memuat lingkup kerja.");
+      }
+    })();
   }, [form.ulok]);
 
-  const onFileChange = (e) => {
-    const f = e.target.files?.[0];
-    setFile(f || null);
-  };
+const onFileChange = (e) => {
+  const selected = Array.from(e.target.files || []);
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setResult(null);
-    if (!form.cabang || !form.ulok || !form.lingkup || !file) {
-      setError("Lengkapi semua field dan pilih file.");
-      return;
-    }
-    try {
-      setSubmitting(true);
-      const f = await fileToBase64(file);
-      const payload = {
-        cabang: form.cabang.trim(),
-        ulok: form.ulok.trim(),
-        lingkup: form.lingkup.trim(),
-        file: {
-          name: f.name,
-          mimeType: f.mimeType,
-          size: f.size,
-          base64: f.base64,
-          extension: f.extension,
-        },
-      };
-      const saved = await createDocument(payload);
-      setResult(saved);
-      setForm(initial);
-      setFile(null);
-      setSubmitting(false);
-    } catch (err) {
-      setSubmitting(false);
-      setError(err.message || "Terjadi kesalahan saat menyimpan.");
-    }
-  };
+  // Filter hanya file PDF
+  const pdfFiles = selected.filter(
+    (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
+  );
+
+  if (pdfFiles.length !== selected.length) {
+    alert("Hanya file PDF yang diperbolehkan.");
+  }
+
+  setFiles(pdfFiles);
+};
+
+
+const onSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setResult(null);
+
+  if (!form.cabang || !form.ulok || !form.lingkup || files.length === 0) {
+    setError("Lengkapi semua field dan pilih minimal 1 file PDF.");
+    return;
+  }
+
+  try {
+    setSubmitting(true);
+
+    // Ubah semua file ke base64
+    const filesData = await Promise.all(
+      files.map(async (f) => {
+        const conv = await fileToBase64(f);
+        return {
+          name: conv.name,
+          mimeType: conv.mimeType,
+          size: conv.size,
+          base64: conv.base64,
+          extension: conv.extension,
+        };
+      })
+    );
+
+    const payload = {
+      cabang: form.cabang.trim(),
+      ulok: form.ulok.trim(),
+      lingkup: form.lingkup.trim(),
+      files: filesData, // ← kirim sebagai array
+    };
+
+    const saved = await createDocument(payload);
+    setResult(saved);
+    setForm(initial);
+    setFiles([]); // reset
+    setSubmitting(false);
+  } catch (err) {
+    setSubmitting(false);
+    setError(err.message || "Terjadi kesalahan saat menyimpan.");
+  }
+};
+
 
   return (
     <div className="card" aria-busy={submitting}>
@@ -140,7 +160,6 @@ useEffect(() => {
           </div>
         </div>
       )}
-
 
       <form
         onSubmit={onSubmit}
@@ -203,12 +222,13 @@ useEffect(() => {
         {/* Upload file */}
         <div className="mt-5 mb-3">
           <label style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
-            Upload File (PDF / Gambar)
+            Upload File (PDF)
           </label>
 
           <input
             type="file"
-            accept=".pdf,image/*"
+            accept=".pdf,application/pdf" // ← hanya PDF
+            multiple // ← bisa pilih banyak file
             onChange={onFileChange}
             required
             disabled={submitting}
@@ -222,7 +242,7 @@ useEffect(() => {
           />
 
           <small style={{ display: "block", marginTop: 6, color: "#666" }}>
-            Unggah dokumen yang sudah termeterai.
+            Unggah 1 atau lebih dokumen PDF yang sudah termeterai.
           </small>
         </div>
 
