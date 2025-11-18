@@ -233,7 +233,7 @@ const onSubmit = async (e) => {
         {/* Upload file */}
         <div className="mt-5 mb-3">
           <label style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
-            Upload File (PDF)
+            Upload File Rekapitulasi RAB Termaterai + SPH Termaterai
           </label>
 
           <input
