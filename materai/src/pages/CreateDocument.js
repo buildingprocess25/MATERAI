@@ -161,6 +161,7 @@ const onSubmit = async (e) => {
 
     const payloadRab = {
       ...basePayload,
+      docKind: "RAB", // ← tandai sebagai dokumen RAB
       file: {
         name: rab.name,
         mimeType: rab.mimeType,
@@ -180,6 +181,7 @@ const onSubmit = async (e) => {
 
     const payloadSph = {
       ...basePayload,
+      docKind: "SPH", // ← tandai sebagai dokumen SPH
       file: {
         name: sph.name,
         mimeType: sph.mimeType,
