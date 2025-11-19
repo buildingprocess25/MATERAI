@@ -23,7 +23,8 @@ const initial = { cabang: "", ulok: "", lingkup: "" };
 
 export default function CreateDocument() {
   const [form, setForm] = useState(initial);
-  const [files, setFiles] = useState([]); // ← simpan banyak file
+  const [rabFile, setRabFile] = useState(null); // file Rekap RAB
+  const [sphFile, setSphFile] = useState(null); // file SPH
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -87,29 +88,57 @@ export default function CreateDocument() {
     })();
   }, [form.ulok]);
 
-const onFileChange = (e) => {
-  const selected = Array.from(e.target.files || []);
+  // RAB
+  const onRabFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) {
+      setRabFile(null);
+      return;
+    }
 
-  // ambil hanya file PDF
-  const pdfOnly = selected.filter(
-    (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
-  );
+    // hanya PDF
+    if (
+      f.type !== "application/pdf" &&
+      !f.name.toLowerCase().endsWith(".pdf")
+    ) {
+      alert("File RAB harus PDF.");
+      e.target.value = "";
+      setRabFile(null);
+      return;
+    }
 
-  // kalau ada yang bukan PDF, kasih warning
-  if (pdfOnly.length !== selected.length) {
-    alert("Hanya file PDF yang diperbolehkan.");
-  }
+    setRabFile(f);
+  };
 
-  setFiles(pdfOnly);
-};
+  // SPH
+  const onSphFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) {
+      setSphFile(null);
+      return;
+    }
+
+    // hanya PDF
+    if (
+      f.type !== "application/pdf" &&
+      !f.name.toLowerCase().endsWith(".pdf")
+    ) {
+      alert("File SPH harus PDF.");
+      e.target.value = "";
+      setSphFile(null);
+      return;
+    }
+
+    setSphFile(f);
+  };
 
 const onSubmit = async (e) => {
   e.preventDefault();
   setError("");
   setResult(null);
 
-  if (!form.cabang || !form.ulok || !form.lingkup || files.length === 0) {
-    setError("Lengkapi semua field dan pilih minimal 1 file PDF.");
+  if (!form.cabang || !form.ulok || !form.lingkup || !rabFile || !sphFile) {
+    setError("Lengkapi semua field dan pilih file RAB & SPH (PDF).");
     return;
   }
 
@@ -124,34 +153,48 @@ const onSubmit = async (e) => {
 
     const allResults = [];
 
-    // kirim ke backend satu per satu, tetap pakai "file:"
-    for (const rawFile of files) {
-      const f = await fileToBase64(rawFile);
-
-      // cek sederhana sebelum dikirim
-      if (!f.base64 || !f.mimeType || !f.name) {
-        throw new Error("file tidak lengkap (base64/mimeType/name)");
-      }
-
-      const payload = {
-        ...basePayload,
-        file: {
-          name: f.name,
-          mimeType: f.mimeType,
-          size: f.size,
-          base64: f.base64,
-          extension: f.extension,
-        },
-      };
-
-      const saved = await createDocument(payload);
-      allResults.push(saved);
+    // === 1) Kirim file RAB ===
+    const rab = await fileToBase64(rabFile);
+    if (!rab.base64 || !rab.mimeType || !rab.name) {
+      throw new Error("File RAB tidak lengkap (base64/mimeType/name)");
     }
 
-    // simpan hasil terakhir atau seluruh array (sesuai kebutuhanmu)
+    const payloadRab = {
+      ...basePayload,
+      file: {
+        name: rab.name,
+        mimeType: rab.mimeType,
+        size: rab.size,
+        base64: rab.base64,
+        extension: rab.extension,
+      },
+    };
+    const savedRab = await createDocument(payloadRab);
+    allResults.push(savedRab);
+
+    // === 2) Kirim file SPH ===
+    const sph = await fileToBase64(sphFile);
+    if (!sph.base64 || !sph.mimeType || !sph.name) {
+      throw new Error("File SPH tidak lengkap (base64/mimeType/name)");
+    }
+
+    const payloadSph = {
+      ...basePayload,
+      file: {
+        name: sph.name,
+        mimeType: sph.mimeType,
+        size: sph.size,
+        base64: sph.base64,
+        extension: sph.extension,
+      },
+    };
+    const savedSph = await createDocument(payloadSph);
+    allResults.push(savedSph);
+
     setResult(allResults);
     setForm(initial);
-    setFiles([]);
+    setRabFile(null);
+    setSphFile(null);
     setSubmitting(false);
   } catch (err) {
     setSubmitting(false);
@@ -231,16 +274,16 @@ const onSubmit = async (e) => {
         </div>
 
         {/* Upload file */}
+        {/* Upload file RAB */}
         <div className="mt-5 mb-3">
           <label style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
-            Upload File Rekapitulasi RAB Termaterai + SPH Termaterai
+            Upload File Rekapitulasi RAB Termaterai (PDF)
           </label>
 
           <input
             type="file"
-            accept=".pdf,application/pdf" // ← hanya PDF
-            multiple // ← bisa pilih banyak file
-            onChange={onFileChange}
+            accept=".pdf,application/pdf"
+            onChange={onRabFileChange}
             required
             disabled={submitting}
             style={{
@@ -253,7 +296,33 @@ const onSubmit = async (e) => {
           />
 
           <small style={{ display: "block", marginTop: 6, color: "#666" }}>
-            Unggah 1 atau lebih dokumen PDF yang sudah termeterai.
+            Unggah dokumen Rekapitulasi RAB yang sudah termeterai (PDF).
+          </small>
+        </div>
+
+        {/* Upload file SPH */}
+        <div className="mb-3">
+          <label style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
+            Upload File SPH Termaterai (PDF)
+          </label>
+
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            onChange={onSphFileChange}
+            required
+            disabled={submitting}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "10px",
+            }}
+          />
+
+          <small style={{ display: "block", marginTop: 6, color: "#666" }}>
+            Unggah dokumen SPH yang sudah termeterai (PDF).
           </small>
         </div>
 
