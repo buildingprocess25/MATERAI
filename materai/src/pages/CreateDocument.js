@@ -24,7 +24,6 @@ const initial = { cabang: "", ulok: "", lingkup: "" };
 export default function CreateDocument() {
   const [form, setForm] = useState(initial);
   const [rabFile, setRabFile] = useState(null); // file Rekap RAB
-  const [sphFile, setSphFile] = useState(null); // file SPH
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -110,35 +109,15 @@ export default function CreateDocument() {
     setRabFile(f);
   };
 
-  // SPH
-  const onSphFileChange = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) {
-      setSphFile(null);
-      return;
-    }
 
-    // hanya PDF
-    if (
-      f.type !== "application/pdf" &&
-      !f.name.toLowerCase().endsWith(".pdf")
-    ) {
-      alert("File SPH harus PDF.");
-      e.target.value = "";
-      setSphFile(null);
-      return;
-    }
-
-    setSphFile(f);
-  };
 
 const onSubmit = async (e) => {
   e.preventDefault();
   setError("");
   setResult(null);
 
-  if (!form.cabang || !form.ulok || !form.lingkup || !rabFile || !sphFile) {
-    setError("Lengkapi semua field dan pilih file RAB & SPH (PDF).");
+  if (!form.cabang || !form.ulok || !form.lingkup || !rabFile) {
+    setError("Lengkapi semua field dan pilih file RAB (PDF).");
     return;
   }
 
@@ -151,9 +130,7 @@ const onSubmit = async (e) => {
       lingkup: form.lingkup.trim(),
     };
 
-    const allResults = [];
-
-    // === 1) Kirim file RAB ===
+    // === Kirim 1 file RAB ===
     const rab = await fileToBase64(rabFile);
     if (!rab.base64 || !rab.mimeType || !rab.name) {
       throw new Error("File RAB tidak lengkap (base64/mimeType/name)");
@@ -161,7 +138,7 @@ const onSubmit = async (e) => {
 
     const payloadRab = {
       ...basePayload,
-      docKind: "RAB", // ← tandai sebagai dokumen RAB
+      docKind: "RAB", // boleh dibiarkan atau dihapus, backend sekarang mengabaikan
       file: {
         name: rab.name,
         mimeType: rab.mimeType,
@@ -170,39 +147,19 @@ const onSubmit = async (e) => {
         extension: rab.extension,
       },
     };
+
     const savedRab = await createDocument(payloadRab);
-    allResults.push(savedRab);
 
-    // === 2) Kirim file SPH ===
-    const sph = await fileToBase64(sphFile);
-    if (!sph.base64 || !sph.mimeType || !sph.name) {
-      throw new Error("File SPH tidak lengkap (base64/mimeType/name)");
-    }
-
-    const payloadSph = {
-      ...basePayload,
-      docKind: "SPH", // ← tandai sebagai dokumen SPH
-      file: {
-        name: sph.name,
-        mimeType: sph.mimeType,
-        size: sph.size,
-        base64: sph.base64,
-        extension: sph.extension,
-      },
-    };
-    const savedSph = await createDocument(payloadSph);
-    allResults.push(savedSph);
-
-    setResult(allResults);
+    setResult(savedRab);
     setForm(initial);
     setRabFile(null);
-    setSphFile(null);
     setSubmitting(false);
   } catch (err) {
     setSubmitting(false);
     setError(err.message || "Terjadi kesalahan saat menyimpan.");
   }
 };
+
 
 
   return (
@@ -275,6 +232,27 @@ const onSubmit = async (e) => {
           </div>
         </div>
 
+        {/* TOMBOL GABUNGKAN FILE RAB & SPH */}
+        <div style={{ marginTop: 12, marginBottom: 4 }}>
+          <a
+            href="https://pdf-combine-beta.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-block",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              backgroundColor: "#f57c00",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: 14,
+              textDecoration: "none",
+            }}
+          >
+            Gabungkan file RAB dan SPH di sini
+          </a>
+        </div>
+
         {/* Upload file */}
         {/* Upload file RAB */}
         <div className="mt-5 mb-3">
@@ -299,32 +277,6 @@ const onSubmit = async (e) => {
 
           <small style={{ display: "block", marginTop: 6, color: "#666" }}>
             Unggah dokumen Rekapitulasi RAB yang sudah termeterai (PDF).
-          </small>
-        </div>
-
-        {/* Upload file SPH */}
-        <div className="mb-3">
-          <label style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
-            Upload File SPH Termaterai (PDF)
-          </label>
-
-          <input
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={onSphFileChange}
-            required
-            disabled={submitting}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "10px",
-            }}
-          />
-
-          <small style={{ display: "block", marginTop: 6, color: "#666" }}>
-            Unggah dokumen SPH yang sudah termeterai (PDF).
           </small>
         </div>
 
